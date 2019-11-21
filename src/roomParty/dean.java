@@ -3,15 +3,15 @@ package roomParty;
 import java.util.concurrent.Semaphore;
 
 public class dean implements Runnable {
-    private Integer students;
+    private roomParty room;
     private String dean;
     private Semaphore mutex;
     private Semaphore turn;
     private Semaphore clear;
     private Semaphore lieIn;
 
-    public dean(Integer students, String dean, Semaphore mutex, Semaphore turn, Semaphore clear, Semaphore lieIn){
-        this.students = students;
+    public dean(roomParty room, String dean, Semaphore mutex, Semaphore turn, Semaphore clear, Semaphore lieIn){
+        this.room = room;
         this.dean = dean;
         this.mutex = mutex;
         this.turn = turn;
@@ -21,34 +21,32 @@ public class dean implements Runnable {
 
     @Override
     public void run(){
-        while (true) {
-            try{
-                synchronized (mutex){
-                    mutex.wait();
-                    if (students > 0 && students < 10) {
+            while (true) {
+                try {
+                    mutex.acquire();
+                    if (room.getStudentsParty() > 0 && room.getStudentsParty() < 50) {
                         dean = "waiting";
-                        mutex.notify();
-                        lieIn.wait();
+                        mutex.release();
+                        lieIn.acquire();
                     }
+                    System.out.println(room.getStudentsParty());
 
-                    if (students >= 50){
+                    if (room.getStudentsParty() >= 50) {
                         dean = "in the room";
                         System.out.println("The party is over!!!!");
-                        turn.wait();
-                        mutex.notify();
-                        clear.wait();
-                        turn.notify();
-                    }
-
-                    else {
+                        turn.acquire();
+                        mutex.release();
+                        clear.acquire();
+                        turn.release();
+                    } else {
                         System.out.println("Searching...");
                     }
                     dean = "not here";
-                    mutex.notify();
+                    mutex.release();
+
+                } catch (InterruptedException error) {
+                    error.printStackTrace();
                 }
-            } catch (InterruptedException error){
-                error.printStackTrace();
             }
-        }
     }
 }

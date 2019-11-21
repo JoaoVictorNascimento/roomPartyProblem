@@ -1,17 +1,18 @@
 package roomParty;
 
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicInteger;
 
-public class student implements Runnable{
-    private Integer students;
+public class student implements Runnable {
+    private roomParty room;
     private String dean;
     private Semaphore mutex;
     private Semaphore turn;
     private Semaphore clear;
     private Semaphore lieIn;
 
-    public student(Integer students, String dean, Semaphore mutex, Semaphore turn, Semaphore clear, Semaphore lieIn){
-        this.students = students;
+    public student(roomParty room, String dean, Semaphore mutex, Semaphore turn, Semaphore clear, Semaphore lieIn) {
+        this.room = room;
         this.dean = dean;
         this.mutex = mutex;
         this.turn = turn;
@@ -20,43 +21,39 @@ public class student implements Runnable{
     }
 
     @Override
-    public void run(){
-        while (true) {
-            try{
-                synchronized (mutex) {
+    public void run() {
+            while (true) {
+                try {
+                    mutex.acquire();
                     if (dean == "in the room") {
-                        mutex.notify();
-                        turn.wait();
-                        turn.notify();
-                        mutex.wait();
+                        mutex.release();
+                        turn.acquire();
+                        turn.release();
+                        mutex.acquire();
                     }
+                    room.goParty();
 
-                    students += 1;
-
-                    if (students == 50 && dean == "waiting") {
-                        lieIn.notify();
+                    if (room.getStudentsParty() == 50 && dean == "waiting") {
+                        lieIn.release();
+                    } else {
+                        mutex.release();
                     }
-
-                    else {
-                        mutex.notify();
-                    }
-
                     System.out.println("Time to hit the ship");
 
-                    mutex.wait();
-                    students -= 1;
 
-                    if (students == 0 && dean == "waiting") {
-                        lieIn.notify();
-                    } else if (students == 0 && dean == "in the room") {
-                        clear.notify();
+                    mutex.acquire();
+                    room.goOutParty();
+                    if (room.getStudentsParty() == 0 && dean == "waiting") {
+                        lieIn.release();
+                    } else if (room.getStudentsParty() == 0 && dean == "in the room") {
+                        clear.release();
                     } else {
-                        mutex.notify();
+                        mutex.release();
                     }
+
+                } catch (InterruptedException error) {
+                    error.printStackTrace();
                 }
-            } catch (InterruptedException error) {
-                error.printStackTrace();
             }
-        }
     }
 }
